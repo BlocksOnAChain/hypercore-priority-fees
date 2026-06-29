@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HyperCore + Solana Arb & Sniper Dashboard</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --yellow: #d29922;
+    --red: #f85149;
+    --orange: #e3b341;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px; }
+  .header {
+    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 24px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header h1 { font-size: 18px; color: var(--accent); letter-spacing: 0.5px; }
+  .header .sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .status-bar { display: flex; gap: 20px; align-items: center; }
+  .badge {
+    padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+  }
+  .badge-red    { background: rgba(248,81,73,0.2); color: var(--red); border: 1px solid rgba(248,81,73,0.4); }
+  .badge-yellow { background: rgba(210,153,34,0.2); color: var(--yellow); border: 1px solid rgba(210,153,34,0.4); }
+  .badge-green  { background: rgba(63,185,80,0.2); color: var(--green); border: 1px solid rgba(63,185,80,0.4); }
+  .badge-blue   { background: rgba(88,166,255,0.2); color: var(--accent); border: 1px solid rgba(88,166,255,0.4); }
+  .ts { font-size: 11px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1px; padding: 0; border-top: 1px solid var(--border); }
+  .kpi-row { display: flex; gap: 1px; background: var(--border); border-bottom: 1px solid var(--border); }
+  .kpi { background: var(--surface); padding: 14px 20px; flex: 1; }
+  .kpi .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; }
+  .kpi .value { font-size: 26px; font-weight: 700; }
+  .kpi .value.red { color: var(--red); }
+  .kpi .value.yellow { color: var(--yellow); }
+  .kpi .value.green { color: var(--green); }
+  .kpi .value.blue { color: var(--accent); }
+  .kpi .sub-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  .section { margin: 0; }
+  .section-header {
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: 10px 20px; font-size: 11px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;
+  }
+  .section-header .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .dot-red { background: var(--red); }
+  .dot-yellow { background: var(--yellow); }
+  .dot-green { background: var(--green); }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: var(--surface2); padding: 8px 12px; text-align: left;
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.5px; font-weight: 600; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 10;
+  }
+  td { padding: 7px 12px; border-bottom: 1px solid rgba(48,54,61,0.5); font-size: 12px; }
+  tr:hover td { background: rgba(255,255,255,0.03); }
+  .tbl-wrap { max-height: 340px; overflow-y: auto; }
+
+  .conf-HIGH { color: var(--red); font-weight: 700; }
+  .conf-MED  { color: var(--yellow); font-weight: 600; }
+  .conf-LOW  { color: var(--green); }
+
+  .urg-IMMEDIATE { color: var(--red); font-weight: 700; }
+  .urg-WATCH     { color: var(--yellow); font-weight: 600; }
+  .urg-SETUP     { color: var(--green); }
+
+  .dir { font-size: 10px; color: var(--muted); }
+  .sym { color: var(--cyan); font-weight: 700; }
+  .price { color: var(--text); font-variant-numeric: tabular-nums; }
+  .bps { color: var(--orange); }
+  .venue { font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .venue-HL    { background: rgba(188,140,255,0.2); color: var(--purple); }
+  .venue-DRIFT { background: rgba(63,185,80,0.2); color: var(--green); }
+  .venue-BOTH  { background: rgba(88,166,255,0.2); color: var(--accent); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+  .panel { background: var(--bg); }
+
+  #no-data { padding: 60px; text-align: center; color: var(--muted); }
+  #no-data .icon { font-size: 40px; margin-bottom: 12px; }
+  #no-data pre { color: var(--text); background: var(--surface); padding: 16px; border-radius: 6px;
+                 text-align: left; font-size: 12px; margin-top: 16px; display: inline-block; }
+
+  .refresh-bar { padding: 8px 20px; background: var(--surface2); border-top: 1px solid var(--border);
+                 display: flex; align-items: center; gap: 12px; font-size: 11px; color: var(--muted); }
+  .refresh-bar button {
+    background: var(--accent); color: #000; border: none; padding: 4px 12px;
+    border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 700;
+  }
+  .refresh-bar button:hover { opacity: 0.8; }
+  .refresh-bar input[type="checkbox"] { cursor: pointer; }
+
+  .pattern-chip {
+    font-size: 9px; padding: 1px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .chip-dislocation     { background: rgba(248,81,73,0.2); color: var(--red); }
+  .chip-funding_cliff   { background: rgba(188,140,255,0.2); color: var(--purple); }
+  .chip-liquidation_zone { background: rgba(210,153,34,0.2); color: var(--yellow); }
+  .chip-momentum        { background: rgba(88,166,255,0.2); color: var(--accent); }
+  .chip-mark_spread     { background: rgba(63,185,80,0.2); color: var(--green); }
+  .chip-funding_arb     { background: rgba(188,140,255,0.2); color: var(--purple); }
+
+  .side-long  { color: var(--green); font-weight: 700; }
+  .side-short { color: var(--red); font-weight: 700; }
+  .side-buy   { color: var(--green); font-weight: 700; }
+  .side-sell  { color: var(--red); font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>HyperCore + Solana Arb &amp; Sniper Dashboard</h1>
+    <div class="sub">Hyperliquid (HL) × Drift Protocol (Solana) — read from arb_report.json</div>
+  </div>
+  <div class="status-bar">
+    <span id="hdr-ts" class="ts">—</span>
+    <span id="hdr-arb" class="badge badge-blue">— arb</span>
+    <span id="hdr-sniper" class="badge badge-blue">— sniper</span>
+  </div>
+</div>
+
+<div id="no-data">
+  <div class="icon">📡</div>
+  <p>Waiting for scan data…</p>
+  <pre>python3 loop_runner.py --once --mock   # offline demo
+python3 loop_runner.py --once           # live APIs (needs network)
+python3 loop_runner.py --interval 60    # continuous loop</pre>
+  <p style="margin-top:12px;font-size:11px;color:var(--muted)">Then refresh this page or enable Auto-Refresh below.</p>
+</div>
+
+<div id="main" style="display:none">
+  <div class="kpi-row">
+    <div class="kpi"><div class="label">HL Markets</div><div class="value blue" id="kpi-hl">—</div><div class="sub-label">perp markets tracked</div></div>
+    <div class="kpi"><div class="label">Drift Markets</div><div class="value blue" id="kpi-drift">—</div><div class="sub-label">Solana perps</div></div>
+    <div class="kpi"><div class="label">HIGH Arb Signals</div><div class="value" id="kpi-arb-high">—</div><div class="sub-label" id="kpi-arb-total">— total arb signals</div></div>
+    <div class="kpi"><div class="label">IMMEDIATE Snipers</div><div class="value" id="kpi-snp-imm">—</div><div class="sub-label" id="kpi-snp-total">— total sniper signals</div></div>
+    <div class="kpi"><div class="label">Last Scan</div><div class="value blue" style="font-size:14px;margin-top:4px" id="kpi-ts">—</div><div class="sub-label">UTC</div></div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel">
+      <div class="section-header"><div class="dot dot-green"></div>ARB SIGNALS</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th><th>Symbol</th><th>HL $</th><th>Drift $</th>
+              <th>Gap (bps)</th><th>Direction</th><th>Conf</th>
+            </tr>
+          </thead>
+          <tbody id="arb-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section-header"><div class="dot dot-red"></div>SNIPER SIGNALS</div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pattern</th><th>Symbol</th><th>Venue</th><th>Side</th>
+              <th>Edge (bps)</th><th>Trigger</th><th>Urgency</th>
+            </tr>
+          </thead>
+          <tbody id="sniper-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><div class="dot dot-yellow"></div>TOP ARB DETAIL</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Symbol</th><th>HL Mark</th><th>Drift Mark</th><th>Gap (bps)</th>
+            <th>HL Fund (bps/hr)</th><th>Drift Fund</th><th>HL Disloc</th><th>PFI</th><th>Direction</th><th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="top-arb-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header"><div class="dot dot-red"></div>TOP SNIPER DETAIL</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pattern</th><th>Symbol</th><th>Venue</th><th>Side</th>
+            <th>Edge (bps)</th><th>Trigger</th><th>Unit</th><th>Urgency</th><th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="top-sniper-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="refresh-bar">
+  <button onclick="loadReport()">↻ Refresh Now</button>
+  <label><input type="checkbox" id="auto-refresh" onchange="toggleAuto()"> Auto-refresh every <input type="number" id="refresh-interval" value="30" min="5" max="300" style="width:48px;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:1px 4px;border-radius:3px">s</label>
+  <span id="next-refresh" class="ts"></span>
+  <span style="flex:1"></span>
+  <span class="ts">Source: <code>arb_report.json</code> — run <code>python3 loop_runner.py --mock</code> to update</span>
+</div>
+
+<script>
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function fmt(n, dec=2) {
+  if (n == null || isNaN(n)) return '<span style="color:var(--muted)">—</span>';
+  return Number(n).toLocaleString('en-US', {minimumFractionDigits:dec, maximumFractionDigits:dec});
+}
+function confBadge(c) {
+  return `<span class="conf-${esc(c)}">${esc(c)}</span>`;
+}
+function urgBadge(u) {
+  return `<span class="urg-${esc(u)}">${esc(u)}</span>`;
+}
+function patternChip(p) {
+  return `<span class="pattern-chip chip-${esc(p)}">${esc(p).replace('_',' ')}</span>`;
+}
+function venueBadge(v) {
+  return `<span class="venue venue-${esc(v)}">${esc(v)}</span>`;
+}
+function sideHtml(s) {
+  const cl = (s||'').toUpperCase().includes('LONG') || (s||'').startsWith('BUY') ? 'side-long' : 'side-short';
+  return `<span class="${cl}">${esc(s)}</span>`;
+}
+function directionHtml(d) {
+  // BUY_HL_SELL_DRIFT, BUY_DRIFT_SELL_HL, LONG_HL_SHORT_DRIFT, etc.
+  return `<span class="dir" style="font-size:11px">${esc(d)}</span>`;
+}
+
+function renderArbSignals(signals) {
+  const body = document.getElementById('arb-body');
+  if (!signals || !signals.length) { body.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">No arb signals</td></tr>'; return; }
+  body.innerHTML = signals.map(s => `
+    <tr>
+      <td>${patternChip(s.signal_type)}</td>
+      <td class="sym">${esc(s.symbol)}</td>
+      <td class="price">${s.hl_price != null ? '$'+fmt(s.hl_price, s.hl_price > 100 ? 2 : 4) : '—'}</td>
+      <td class="price">${s.drift_price != null ? '$'+fmt(s.drift_price, s.drift_price > 100 ? 2 : 4) : '—'}</td>
+      <td class="bps">${s.price_gap_bps != null ? fmt(s.price_gap_bps) : (s.funding_gap_bps != null ? fmt(s.funding_gap_bps) : '—')}</td>
+      <td>${directionHtml(s.direction)}</td>
+      <td>${confBadge(s.confidence)}</td>
+    </tr>`).join('');
+}
+
+function renderSniperSignals(signals) {
+  const body = document.getElementById('sniper-body');
+  if (!signals || !signals.length) { body.innerHTML = '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">No sniper signals</td></tr>'; return; }
+  body.innerHTML = signals.map(s => `
+    <tr>
+      <td>${patternChip(s.pattern)}</td>
+      <td class="sym">${esc(s.symbol)}</td>
+      <td>${venueBadge(s.venue)}</td>
+      <td>${sideHtml(s.entry_side)}</td>
+      <td class="bps">${fmt(s.estimated_edge_bps)}</td>
+      <td class="price">${fmt(s.trigger_value)} ${esc(s.trigger_unit)}</td>
+      <td>${urgBadge(s.urgency)}</td>
+    </tr>`).join('');
+}
+
+function renderTopArb(signals) {
+  const body = document.getElementById('top-arb-body');
+  if (!signals || !signals.length) { body.innerHTML = '<tr><td colspan="10" style="color:var(--muted);text-align:center;padding:20px">—</td></tr>'; return; }
+  body.innerHTML = signals.map(s => `
+    <tr>
+      <td class="sym">${esc(s.symbol)}</td>
+      <td class="price">${s.hl_price != null ? '$'+fmt(s.hl_price, s.hl_price > 100 ? 2 : 4) : '—'}</td>
+      <td class="price">${s.drift_price != null ? '$'+fmt(s.drift_price, s.drift_price > 100 ? 2 : 4) : '—'}</td>
+      <td class="bps">${s.price_gap_bps != null ? fmt(s.price_gap_bps)+'bps' : '—'}</td>
+      <td class="bps">${s.hl_funding_bps != null ? fmt(s.hl_funding_bps, 4) : '—'}</td>
+      <td class="bps">${s.drift_funding_bps != null ? fmt(s.drift_funding_bps, 4) : '—'}</td>
+      <td class="bps">${s.hl_disloc_bps != null ? fmt(s.hl_disloc_bps)+'bps' : '—'}</td>
+      <td style="color:var(--purple)">${s.pfi_score != null ? fmt(s.pfi_score, 1) : '—'}</td>
+      <td>${directionHtml(s.direction)}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(s.note)}</td>
+    </tr>`).join('');
+}
+
+function renderTopSniper(signals) {
+  const body = document.getElementById('top-sniper-body');
+  if (!signals || !signals.length) { body.innerHTML = '<tr><td colspan="9" style="color:var(--muted);text-align:center;padding:20px">—</td></tr>'; return; }
+  body.innerHTML = signals.map(s => `
+    <tr>
+      <td>${patternChip(s.pattern)}</td>
+      <td class="sym">${esc(s.symbol)}</td>
+      <td>${venueBadge(s.venue)}</td>
+      <td>${sideHtml(s.entry_side)}</td>
+      <td class="bps">${fmt(s.estimated_edge_bps)}bps</td>
+      <td class="price">${fmt(s.trigger_value, 3)}</td>
+      <td style="color:var(--muted)">${esc(s.trigger_unit)}</td>
+      <td>${urgBadge(s.urgency)}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(s.note)}</td>
+    </tr>`).join('');
+}
+
+function applyReport(data) {
+  const arbHigh = data.arb_signals_high ?? 0;
+  const arbTotal = data.arb_signals_total ?? 0;
+  const snpImm = data.sniper_signals_immediate ?? 0;
+  const snpTotal = data.sniper_signals_total ?? 0;
+
+  document.getElementById('no-data').style.display = 'none';
+  document.getElementById('main').style.display = 'block';
+
+  document.getElementById('kpi-hl').textContent = data.hl_market_count ?? '—';
+  document.getElementById('kpi-drift').textContent = data.drift_market_count ?? '—';
+
+  const arbEl = document.getElementById('kpi-arb-high');
+  arbEl.textContent = arbHigh;
+  arbEl.className = 'value ' + (arbHigh > 0 ? 'red' : (arbTotal > 0 ? 'yellow' : 'green'));
+  document.getElementById('kpi-arb-total').textContent = arbTotal + ' total arb signals';
+
+  const snpEl = document.getElementById('kpi-snp-imm');
+  snpEl.textContent = snpImm;
+  snpEl.className = 'value ' + (snpImm > 0 ? 'red' : (snpTotal > 0 ? 'yellow' : 'green'));
+  document.getElementById('kpi-snp-total').textContent = snpTotal + ' total sniper signals';
+
+  document.getElementById('kpi-ts').textContent = data.ts ?? '—';
+
+  const hdrArb = document.getElementById('hdr-arb');
+  hdrArb.textContent = arbHigh + ' HIGH arb';
+  hdrArb.className = 'badge ' + (arbHigh > 0 ? 'badge-red' : 'badge-green');
+
+  const hdrSnp = document.getElementById('hdr-sniper');
+  hdrSnp.textContent = snpImm + ' IMMEDIATE';
+  hdrSnp.className = 'badge ' + (snpImm > 0 ? 'badge-red' : 'badge-green');
+
+  document.getElementById('hdr-ts').textContent = data.ts ?? '';
+
+  renderArbSignals(data.top_arb ?? []);
+  renderSniperSignals(data.top_sniper ?? []);
+  renderTopArb(data.top_arb ?? []);
+  renderTopSniper(data.top_sniper ?? []);
+}
+
+async function loadReport() {
+  try {
+    const r = await fetch('arb_report.json?' + Date.now());
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    applyReport(data);
+  } catch (e) {
+    // Keep showing no-data state if file not found
+    document.getElementById('hdr-ts').textContent = 'No report yet — run scanner';
+  }
+}
+
+let autoTimer = null;
+let countdown = 0;
+function tick() {
+  countdown--;
+  const el = document.getElementById('next-refresh');
+  if (el) el.textContent = countdown > 0 ? `next refresh in ${countdown}s` : 'refreshing…';
+  if (countdown <= 0) {
+    loadReport();
+    const interval = parseInt(document.getElementById('refresh-interval').value) || 30;
+    countdown = interval;
+  }
+}
+
+function toggleAuto() {
+  const on = document.getElementById('auto-refresh').checked;
+  if (on) {
+    const interval = parseInt(document.getElementById('refresh-interval').value) || 30;
+    countdown = interval;
+    autoTimer = setInterval(tick, 1000);
+  } else {
+    clearInterval(autoTimer);
+    document.getElementById('next-refresh').textContent = '';
+  }
+}
+
+loadReport();
+</script>
+</body>
+</html>
