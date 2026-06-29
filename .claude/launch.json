@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "hypercore-dashboard",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["serve.py", "--port", "8787"],
+      "port": 8787
+    },
+    {
+      "name": "static-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8089", "-d", "site"],
+      "port": 8089
+    }
+  ]
+}

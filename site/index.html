@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HyperCore Priority-Fee Opportunity Monitor</title>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="hl-core.js"></script>
+<style>
+  :root{
+    --bg:#0a0e14; --panel:#121821; --panel2:#0e141d; --line:#1e2937;
+    --txt:#e6edf3; --muted:#8b98a9; --accent:#3fb6a8; --accent2:#7c5cff;
+    --green:#2ea043; --amber:#d29922; --red:#e5534b; --chip:#1b2430;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--accent)}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;
+    background:linear-gradient(180deg,#0d131c,#0a0e14)}
+  h1{font-size:19px;margin:0;letter-spacing:.2px}
+  h1 .sub{color:var(--muted);font-weight:400;font-size:13px;display:block;margin-top:3px}
+  .live{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);
+    animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  main{max-width:1280px;margin:0 auto;padding:24px 28px 80px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:26px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .kpi .v{font-size:26px;font-weight:650;letter-spacing:.3px}
+  .kpi .l{color:var(--muted);font-size:12px;margin-top:4px}
+  .kpi .d{font-size:12px;margin-top:6px}
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:20px 22px;margin-bottom:24px}
+  section h2{font-size:15px;margin:0 0 4px}
+  section .desc{color:var(--muted);font-size:12.5px;margin:0 0 16px;max-width:900px}
+  .grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:22px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .chartbox{position:relative;height:300px}
+  .chartbox canvas{position:absolute;inset:0}
+  .controls{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  select,input[type=search]{background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+    border-radius:8px;padding:7px 10px;font-size:13px}
+  input[type=search]{min-width:180px}
+  label.ctl{color:var(--muted);font-size:12px;display:flex;flex-direction:column;gap:4px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  th{color:var(--muted);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px;
+    cursor:pointer;user-select:none}
+  th.l,td.l{text-align:left}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#161e29}
+  tr.sel{background:#17222e}
+  .badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:11px;font-weight:600}
+  .b-closed{background:rgba(229,83,75,.16);color:#ff8a82}
+  .b-open{background:rgba(46,160,67,.16);color:#5ad17a}
+  .b-na{background:rgba(139,152,169,.14);color:var(--muted)}
+  .bucket{color:var(--muted);font-size:12px}
+  .pfibar{position:relative;height:16px;border-radius:4px;background:#0c121a;overflow:hidden;min-width:90px}
+  .pfibar > i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+  .pfibar > span{position:relative;padding-left:6px;font-size:11px;line-height:16px;font-variant-numeric:tabular-nums}
+  .detail{font-size:12px;color:var(--muted);background:var(--panel2);padding:6px 10px}
+  .num{font-variant-numeric:tabular-nums}
+  .calc{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+  @media(max-width:760px){.calc{grid-template-columns:1fr}}
+  .slider{margin-bottom:14px}
+  .slider .row{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:4px}
+  .slider .row b{color:var(--accent)}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .out{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:16px}
+  .out .big{font-size:30px;font-weight:700}
+  .out .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+  .out .row:last-child{border-bottom:none}
+  .pill{font-size:11px;color:var(--muted);background:var(--chip);border:1px solid var(--line);
+    border-radius:999px;padding:3px 9px;cursor:pointer}
+  .note{font-size:12px;color:var(--muted);line-height:1.6}
+  .err{color:#ff8a82;font-size:12px}
+  footer{max-width:1280px;margin:0 auto;padding:0 28px 60px;color:var(--muted);font-size:12px;line-height:1.7}
+  code{background:#0c121a;padding:1px 5px;border-radius:4px;color:#cdd9e5}
+</style>
+</head>
+<body>
+<header>
+  <h1>HyperCore Priority-Fee Opportunity Monitor
+    <span class="sub">Live stale-liquidity / toxic-flow surface across all Hyperliquid perp markets &middot; serverless, calls the HL API directly</span>
+  </h1>
+  <div class="live"><span class="dot"></span><span id="asof">connecting…</span></div>
+</header>
+
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Dislocation vs the reference-market clock <span style="color:var(--muted);font-weight:400">— live cross-section</span></h2>
+    <p class="desc">Each dot is a perp market: x = 24h notional volume (log), y = mark/oracle dislocation (bps,
+      the capturable gross edge). <b style="color:#ff8a82">Red</b> = reference cash market closed now,
+      <b style="color:#5ad17a">green</b> = open, grey = 24/7 or unknown. Dislocation — and therefore stale-liquidity
+      capture and write-priority competition — concentrates in tokenized-RWA names whose cash market is shut.
+      <i>Note: this is a point-in-time cross-section across different markets (so the open/closed split shifts with
+      the time of day you load it), not a within-asset before/after experiment — that needs a persisted time series.</i></p>
+    <div class="grid2">
+      <div class="chartbox"><canvas id="scatter"></canvas></div>
+      <div class="chartbox"><canvas id="bars"></canvas></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Priority-Fee Opportunity Index (PFI)</h2>
+    <p class="desc">PFI = dislocation(bps) × log-scaled volume × clock-factor (×1.6 when the reference market is closed).
+      It ranks where immediacy is most valuable — i.e. where takers bid write-priority up toward the 8 bp cap and where
+      a maker's free, un-outbiddable cancel-first protection is worth the most. Click a row for live spread / depth / vol.</p>
+    <div class="controls">
+      <label class="ctl">Dex
+        <select id="fdex"><option value="">all</option></select></label>
+      <label class="ctl">Reference
+        <select id="fref">
+          <option value="">all</option>
+          <option value="closed">closed only</option>
+          <option value="open">open only</option>
+        </select></label>
+      <label class="ctl">Min 24h vol ($M): <span id="fvolv" class="num">0</span>
+        <input type="range" id="fvol" min="0" max="50" step="0.5" value="0" style="width:160px"></label>
+      <label class="ctl">Search
+        <input type="search" id="fq" placeholder="coin…"></label>
+    </div>
+    <div id="terr" class="err"></div>
+    <table id="tbl">
+      <thead><tr>
+        <th class="l" data-k="rank">#</th>
+        <th class="l" data-k="coin">Market</th>
+        <th class="l" data-k="bucket">Reference</th>
+        <th data-k="pfi">PFI</th>
+        <th data-k="disloc_bps">Disloc (bps)</th>
+        <th data-k="vol_24h">24h Vol</th>
+        <th data-k="oi_ntl">OI</th>
+        <th data-k="day_move_pct">Day %</th>
+        <th data-k="funding_bps_hr">Funding</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Maker last-look spread calculator</h2>
+    <p class="desc">On HyperCore a cancel is sequenced ahead of <i>every</i> taker (priority term f = 0), so a maker's
+      stale-quote pull cannot be out-bid at any price — only out-blocked. Competitive zero-profit half-spread
+      (Glosten–Milgrom): <code>s* = α · q · L</code>. The venue only changes q (pickoff probability). Lower q ⇒ tighter
+      spread for the same toxic budget. Set L from any market above with the chip.</p>
+    <div class="calc">
+      <div>
+        <div class="slider"><div class="row"><span>α — informed (toxic) flow fraction</span><b id="va">0.30</b></div>
+          <input type="range" id="sa" min="0.01" max="0.9" step="0.01" value="0.30"></div>
+        <div class="slider"><div class="row"><span>L — adverse move if picked off (bps)</span><b id="vL">30</b></div>
+          <input type="range" id="sL" min="1" max="60" step="0.5" value="30">
+          <span class="pill" id="useL">↑ use selected market's dislocation</span></div>
+        <div class="slider"><div class="row"><span>q&#8202;<sub>latency</sub> — pickoff prob on a latency venue</span><b id="vql">0.90</b></div>
+          <input type="range" id="sql" min="0.05" max="1" step="0.01" value="0.90"></div>
+        <div class="slider"><div class="row"><span>q&#8202;<sub>HyperCore</sub> — pickoff prob with cancel-first</span><b id="vqh">0.30</b></div>
+          <input type="range" id="sqh" min="0.01" max="1" step="0.01" value="0.30"></div>
+        <p class="note" id="calcnote"></p>
+      </div>
+      <div class="out">
+        <div class="row"><span>Break-even half-spread — latency venue</span><b class="num" id="oLat">—</b></div>
+        <div class="row"><span>Break-even half-spread — HyperCore</span><b class="num" id="oHc">—</b></div>
+        <div class="row" style="margin-top:8px"><span>Spread you can shave</span>
+          <span class="big" style="color:var(--accent)" id="oSave">—</span></div>
+        <div class="row"><span>Tighter by</span><b class="num" id="oRatio">—</b></div>
+        <p class="note" style="margin-top:12px">Same adverse-selection budget. The shave is largest exactly where
+          L (toxicity) is largest — the closed-market RWA names at the top of the PFI table.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <b>Mechanism (verified, Hyperliquid docs):</b> within a block, transactions sort by
+  <code>effective_time = arrival_time + f(action, priority_fee)</code>; f is strictly decreasing in fee and
+  <b>0 for cancels</b> (categorically ahead of all takers). Order priority fee: IOC only, ~45 ms/bp, 8 bp cap,
+  charged <b>on fill</b>, paid in HYPE, <b>burned</b>. &nbsp;|&nbsp;
+  <b>Data:</b> live public Hyperliquid info API, called directly from your browser (read-only, no backend, no keys).
+  The exact priority <code>p</code> paid per order is not in the public API — this measures the <i>opportunity surface</i>
+  (dislocation × volume × clock), the best public proxy. Reference open/closed is a coarse session heuristic. Not investment advice.
+</footer>
+
+<script>
+const F = {dex:"", ref:"", vol:0, q:""};
+let SORT = {k:"pfi", dir:-1};
+let MARKETS = [];
+let SELECTED = null;
+let scatterChart=null, barChart=null;
+
+const $ = s => document.querySelector(s);
+// HIP-3 markets are permissionlessly deployed -> coin/bucket strings are UNTRUSTED.
+const esc = s => (""+s).replace(/[&<>"']/g, c => (
+  {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtM = v => v==null ? "—" : (v>=1e9?(v/1e9).toFixed(2)+"B":v>=1e6?(v/1e6).toFixed(1)+"M":v>=1e3?(v/1e3).toFixed(0)+"k":v.toFixed(0));
+const fmt = (v,d=1) => v==null||isNaN(v) ? "—" : Number(v).toFixed(d);
+const med = HLCore.median, mean = HLCore.mean;
+
+function colorFor(disloc){
+  if(disloc==null) return "#243043";
+  const t = Math.max(0, Math.min(1, disloc/40));
+  const r = Math.round(46 + t*(229-46)), g = Math.round(160 + t*(83-160)), b = Math.round(67 + t*(75-67));
+  return `rgb(${r},${g},${b})`;
+}
+
+async function load(){
+  try{
+    const rows = (await HLCore.fetchAllMarkets()).filter(m=>m.disloc_bps!=null);
+    rows.sort((a,b)=>(b.pfi||0)-(a.pfi||0));
+    MARKETS = rows;
+    const now = new Date().toISOString().replace("T"," ").slice(0,19)+" UTC";
+    $("#asof").textContent = "as of "+now+" · "+rows.length+" markets";
+    $("#terr").textContent="";
+    populateDexes(); renderKpis(); renderCharts(); renderTable();
+  }catch(e){ $("#terr").textContent = "fetch failed: "+e; $("#asof").textContent="fetch failed"; }
+}
+
+function populateDexes(){
+  const sel=$("#fdex"); if(sel.options.length>1) return;
+  [...new Set(MARKETS.map(m=>m.dex))].sort().forEach(d=>{
+    const o=document.createElement("option"); o.value=d; o.textContent=d; sel.appendChild(o);
+  });
+}
+
+const CLOCK_BUCKETS = HLCore.CLOCK_BUCKETS;
+function renderKpis(){
+  const cb = MARKETS.filter(m=>CLOCK_BUCKETS.has(m.bucket) && m.disloc_bps!=null);
+  const closed = cb.filter(m=>m.ref_open===false).map(m=>m.disloc_bps);
+  const open = cb.filter(m=>m.ref_open===true).map(m=>m.disloc_bps);
+  const totVol = MARKETS.reduce((s,m)=>s+(m.vol_24h||0),0);
+  const k=[
+    ["Markets tracked", MARKETS.length, `across ${new Set(MARKETS.map(m=>m.dex)).size} perp dexs`],
+    ["24h notional volume", "$"+fmtM(totVol), ""],
+    ["RWA disloc — ref OPEN", fmt(med(open))+" bps",
+       `<span style='color:#5ad17a'>cash market live → tight</span> · mean ${fmt(mean(open))}, n=${open.length}`],
+    ["RWA disloc — ref CLOSED", fmt(med(closed))+" bps",
+       `<span style='color:#ff8a82'>stale → toxic, tail-heavy</span> · mean ${fmt(mean(closed))}, n=${closed.length}`],
+  ];
+  $("#kpis").innerHTML = k.map(([l,v,d])=>`<div class="kpi"><div class="v">${v}</div>
+     <div class="l">${l}</div><div class="d">${d}</div></div>`).join("");
+}
+
+function renderCharts(){
+  if(typeof Chart==="undefined") return;
+  const pts = MARKETS.filter(m=>m.disloc_bps!=null && m.vol_24h>0).map(m=>({
+    x:m.vol_24h, y:m.disloc_bps, r:Math.max(3,Math.min(16,Math.sqrt((m.pfi||0))*1.3)),
+    coin:m.coin, open:m.ref_open}));
+  const ds = [
+    {label:"ref closed", data:pts.filter(p=>p.open===false), backgroundColor:"rgba(229,83,75,.7)"},
+    {label:"ref open", data:pts.filter(p=>p.open===true), backgroundColor:"rgba(46,160,67,.7)"},
+    {label:"24/7 / n.a.", data:pts.filter(p=>p.open==null), backgroundColor:"rgba(139,152,169,.5)"},
+  ];
+  if(scatterChart) scatterChart.destroy();
+  scatterChart = new Chart($("#scatter"),{type:"bubble",data:{datasets:ds},options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:"#8b98a9",boxWidth:10}},
+      tooltip:{callbacks:{label:c=>`${c.raw.coin}: ${c.raw.y.toFixed(1)}bps @ $${fmtM(c.raw.x)}`}}},
+    scales:{x:{type:"logarithmic",title:{display:true,text:"24h volume ($)",color:"#8b98a9"},
+        ticks:{color:"#8b98a9",callback:v=>"$"+fmtM(v)},grid:{color:"#1a2330"}},
+      y:{title:{display:true,text:"dislocation (bps)",color:"#8b98a9"},
+        ticks:{color:"#8b98a9"},grid:{color:"#1a2330"}}}}});
+
+  const byB={}; MARKETS.forEach(m=>{ if(m.disloc_bps==null)return;
+    (byB[m.bucket]=byB[m.bucket]||[]).push(m.disloc_bps); });
+  const labels=Object.keys(byB).sort((a,b)=>med(byB[b])-med(byB[a]));
+  if(barChart) barChart.destroy();
+  barChart = new Chart($("#bars"),{type:"bar",data:{labels,
+    datasets:[{label:"median dislocation (bps)",data:labels.map(l=>med(byB[l])),
+      backgroundColor:labels.map(l=>colorFor(med(byB[l])))}]},
+    options:{indexAxis:"y", responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},title:{display:true,
+        text:"median dislocation by reference type",color:"#8b98a9",font:{size:12}}},
+      scales:{x:{ticks:{color:"#8b98a9"},grid:{color:"#1a2330"}},
+        y:{ticks:{color:"#cdd9e5",font:{size:11}},grid:{display:false}}}}});
+}
+
+function filtered(){
+  let a = MARKETS.filter(m=>{
+    if(F.dex && m.dex!==F.dex) return false;
+    if(F.ref==="closed" && m.ref_open!==false) return false;
+    if(F.ref==="open" && m.ref_open!==true) return false;
+    if((m.vol_24h||0) < F.vol*1e6) return false;
+    if(F.q && !(m.coin||"").toLowerCase().includes(F.q.toLowerCase())) return false;
+    return true;
+  });
+  const k = SORT.k==="rank" ? "pfi" : SORT.k;
+  a.sort((x,y)=>{
+    if(k==="coin"||k==="bucket") return (""+x[k]).localeCompare(""+y[k])*SORT.dir;
+    return ((x[k]??-1e18)-(y[k]??-1e18))*SORT.dir;
+  });
+  return a;
+}
+
+const ROW_CAP = 80;
+function renderTable(){
+  const all=filtered(); const maxPfi=Math.max(1,...all.map(m=>m.pfi||0));
+  const a=all.slice(0, ROW_CAP);
+  const tb=$("#tbody"); tb.innerHTML="";
+  a.forEach((m,i)=>{
+    const tr=document.createElement("tr"); if(SELECTED===m.coin) tr.className="sel";
+    const refBadge = m.ref_open===false?`<span class="badge b-closed">closed</span>`:
+      m.ref_open===true?`<span class="badge b-open">open</span>`:`<span class="badge b-na">24/7</span>`;
+    const dm=m.day_move_pct, dmc = dm==null?"":dm>=0?"#5ad17a":"#ff8a82";
+    tr.innerHTML=`<td class="l num">${i+1}</td>
+      <td class="l">${esc(m.coin)}</td>
+      <td class="l"><span class="bucket">${esc(m.bucket).replace("_"," ")}</span> ${refBadge}</td>
+      <td><div class="pfibar"><i style="width:${100*(m.pfi||0)/maxPfi}%;background:${colorFor(m.disloc_bps)}"></i>
+          <span>${fmt(m.pfi,0)}</span></div></td>
+      <td class="num" style="color:${colorFor(m.disloc_bps)}">${fmt(m.disloc_bps,1)}</td>
+      <td class="num">$${fmtM(m.vol_24h)}</td>
+      <td class="num">${m.oi_ntl==null?"—":"$"+fmtM(m.oi_ntl)}</td>
+      <td class="num" style="color:${dmc}">${dm==null?"—":(dm>=0?"+":"")+fmt(dm,2)+"%"}</td>
+      <td class="num">${m.funding_bps_hr==null?"—":fmt(m.funding_bps_hr,3)}</td>`;
+    tr.onclick=()=>selectMarket(m, tr);
+    tb.appendChild(tr);
+  });
+  if(all.length>ROW_CAP){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td colspan="9" class="detail" style="text-align:center">
+      showing top ${ROW_CAP} of ${all.length} — narrow with the filters above</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+async function selectMarket(m, tr){
+  SELECTED=m.coin;
+  document.querySelectorAll("#tbody tr").forEach(r=>r.classList.remove("sel"));
+  tr.classList.add("sel");
+  window._selDisloc = m.disloc_bps;
+  let dr = tr.nextElementSibling;
+  if(dr && dr.classList.contains("drow")) dr.remove();
+  const row=document.createElement("tr"); row.className="drow";
+  const td=document.createElement("td"); td.colSpan=9; td.className="detail";
+  td.textContent="loading live book / vol…"; row.appendChild(td); tr.after(row);
+  try{
+    const d=await HLCore.fetchMarketDetail(m.coin);
+    td.innerHTML = d.error ? ("detail error: "+esc(d.error)) :
+      `live → spread <b>${fmt(d.spread_bps,2)} bps</b> · bid depth ±10bp <b>$${fmtM(d.bid_depth_10bp)}</b>`+
+      ` · ask depth <b>$${fmtM(d.ask_depth_10bp)}</b> · 1-min realized vol <b>${fmt(d.rv_1m_bps,1)} bps</b>`+
+      (m.disloc_bps>15 && d.spread_bps<8 ?
+        ` &nbsp;—&nbsp; <span style="color:#ffb454">tight ${fmt(d.spread_bps,1)}bps spread into a ${fmt(m.disloc_bps,0)}bps dislocation: consistent with makers leaning on cancel-first protection</span>`:"");
+  }catch(e){ td.textContent="detail fetch failed: "+e; }
+}
+
+function calc(){
+  const a=+$("#sa").value, L=+$("#sL").value, ql=+$("#sql").value, qh=+$("#sqh").value;
+  $("#va").textContent=a.toFixed(2); $("#vL").textContent=L.toFixed(0);
+  $("#vql").textContent=ql.toFixed(2); $("#vqh").textContent=qh.toFixed(2);
+  const sl=HLCore.makerBreakevenSpreadBps(a,ql,L), sh=HLCore.makerBreakevenSpreadBps(a,qh,L);
+  $("#oLat").textContent=sl.toFixed(2)+" bps";
+  $("#oHc").textContent=sh.toFixed(2)+" bps";
+  $("#oSave").textContent=(sl-sh).toFixed(2)+" bps";
+  $("#oRatio").textContent= sl>0 ? (sh/sl*100).toFixed(0)+"% of latency-venue spread" : "—";
+  $("#calcnote").innerHTML = `At α=${a.toFixed(2)}, L=${L.toFixed(0)}bps a latency-venue maker must quote `+
+    `≈${sl.toFixed(1)}bps to break even; on HyperCore ≈${sh.toFixed(1)}bps — it can quote inside by `+
+    `<b style="color:var(--accent)">${(sl-sh).toFixed(1)}bps</b> (or post more size) for the same expected toxic loss.`;
+}
+["sa","sL","sql","sqh"].forEach(id=>$("#"+id).addEventListener("input",calc));
+$("#useL").addEventListener("click",()=>{ if(window._selDisloc){ $("#sL").value=Math.min(60,window._selDisloc); calc(); }});
+
+$("#fdex").addEventListener("change",e=>{F.dex=e.target.value;renderTable();});
+$("#fref").addEventListener("change",e=>{F.ref=e.target.value;renderTable();});
+$("#fvol").addEventListener("input",e=>{F.vol=+e.target.value;$("#fvolv").textContent=F.vol;renderTable();});
+$("#fq").addEventListener("input",e=>{F.q=e.target.value;renderTable();});
+document.querySelectorAll("th[data-k]").forEach(th=>th.addEventListener("click",()=>{
+  const k=th.dataset.k; if(SORT.k===k) SORT.dir*=-1; else {SORT.k=k;SORT.dir=-1;} renderTable();
+}));
+
+calc(); load(); setInterval(load, 30000);
+</script>
+</body>
+</html>

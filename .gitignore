@@ -1,0 +1,12 @@
+# Vercel
+.vercel/
+site/.vercel/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Logs / OS
+server.log
+*.log
+.DS_Store
