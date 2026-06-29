@@ -1,14 +1,22 @@
 {
-  "ts": "2026-06-29T21:57:06Z",
-  "hl_market_count": 31,
-  "drift_market_count": 14,
-  "arb_signals_total": 29,
-  "arb_signals_high": 24,
-  "sniper_signals_total": 34,
-  "sniper_signals_immediate": 15,
+  "ts": "2026-06-29T22:24:17Z",
+  "scan_id": 1,
+  "hl_markets": 31,
+  "drift_markets": 14,
+  "phoenix_markets": 0,
+  "mango_markets": 0,
+  "arb_total": 30,
+  "arb_high": 24,
+  "sniper_total": 35,
+  "sniper_immediate": 15,
+  "basis_total": 0,
+  "basis_high": 0,
+  "fetch_stats": {
+    "mode": "mock"
+  },
   "top_arb": [
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "signal_type": "dislocation_spike",
       "symbol": "AMD",
       "hl_price": 158.9,
@@ -25,7 +33,7 @@
       "note": "mark=$158.9000 oracle=$165.4000"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "signal_type": "mark_spread",
       "symbol": "AVAX",
       "hl_price": 38.2,
@@ -42,7 +50,7 @@
       "note": "Pyth=38.10 confirms HL"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "signal_type": "dislocation_spike",
       "symbol": "NVDA",
       "hl_price": 137.8,
@@ -59,7 +67,7 @@
       "note": "mark=$137.8000 oracle=$142.3000"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "signal_type": "mark_spread",
       "symbol": "OP",
       "hl_price": 1.82,
@@ -76,7 +84,7 @@
       "note": "Pyth=1.81 confirms HL"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "signal_type": "dislocation_spike",
       "symbol": "SMSN",
       "hl_price": 76500.0,
@@ -95,7 +103,7 @@
   ],
   "top_sniper": [
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "pattern": "dislocation",
       "symbol": "AMD",
       "venue": "HL",
@@ -107,7 +115,7 @@
       "note": "mark=158.9000 oracle=165.4000 vol24h=$4.1M"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "pattern": "dislocation",
       "symbol": "NVDA",
       "venue": "HL",
@@ -119,7 +127,7 @@
       "note": "mark=137.8000 oracle=142.3000 vol24h=$8.5M"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "pattern": "dislocation",
       "symbol": "SMSN",
       "venue": "HL",
@@ -131,7 +139,7 @@
       "note": "mark=76,500.0000 oracle=77,800.0000 vol24h=$1.8M"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "pattern": "dislocation",
       "symbol": "COIN",
       "venue": "HL",
@@ -143,7 +151,7 @@
       "note": "mark=268.5000 oracle=272.1000 vol24h=$3.8M"
     },
     {
-      "ts": "2026-06-29T21:57:06Z",
+      "ts": "2026-06-29T22:24:17Z",
       "pattern": "dislocation",
       "symbol": "TOYOTA",
       "venue": "HL",
@@ -154,5 +162,6 @@
       "estimated_edge_bps": 44.776119402985074,
       "note": "mark=2,650.0000 oracle=2,680.0000 vol24h=$0.9M"
     }
-  ]
+  ],
+  "top_basis": []
 }
